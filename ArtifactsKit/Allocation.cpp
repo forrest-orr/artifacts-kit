@@ -493,7 +493,7 @@ uint8_t* DynamicAllocImplant(HANDLE hProcess, bool bRemoteApi, uint8_t* pPayload
 				uint32_t dwBytesWritten = 0;
 
 				if (WriteProcessMemory(hProcess, pAllocatedRegion + ((qwImplantFlags & IMPLANT_FLAG_MOAT) ? dwMoatSize : 0), pPayloadBuf, dwPayloadSize, (PSIZE_T)&dwBytesWritten)) {
-					pImplantEntryPoint = pAllocatedRegion;
+					pImplantEntryPoint = pAllocatedRegion + ((qwImplantFlags & IMPLANT_FLAG_MOAT) ? dwMoatSize : 0);
 				}
 			}
 

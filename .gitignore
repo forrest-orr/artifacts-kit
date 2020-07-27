@@ -30,3 +30,15 @@
 *.exe
 *.out
 *.app
+*.pdb
+ArtifactsKit/Release/ArtifactsKit.vcxproj.FileListAbsolute.txt
+ArtifactsKit/Release/ArtifactsKit.tlog/unsuccessfulbuild
+*.tlog
+*.ipdb
+*.log
+*.iobj
+*.ipch
+*.opendb
+*.db-wal
+*.db-shm
+*.db

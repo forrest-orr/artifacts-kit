@@ -71,7 +71,19 @@ Create a 32-bit shellcode implant within the .text section of a mapped 32-bit DL
 
 	ArtifactsKit32.exe --payload-type shellcode --payload-file Payloads\MsgboxShellcode32.bin --alloc-type dll-map-hollow
 	
-Create a 64-bit shellcode implant within a region of +RWX mapped page file memory at an offset +1MB from its allocation base and execute it using the KERNEL32.DLL!CreateThread API:
+Create a 64-bit shellcode implant within a region of +RWX mapped page file memory at an offset +1MB from its allocation base and
+execute it using the KERNEL32.DLL!CreateThread API:
 
 	ArtifactsKit64.exe --payload-type shellcode --payload-file Payloads\MsgboxShellcode64.bin --alloc-type mapped --stealth moat
+	
+Create a 32-bit PE implant on top of the mapped image memory of a 32-bit DLL image while preserving the original headers of this DLL
+image, bootstrap it and execute the payload PE IMAGE_OPTIONAL_HEADER.AddressOfEntryPoint with a CALL.
+
+	ArtifactsKit32.exe --payload-type pe --payload-file Payloads\TestExe32.exe --alloc-type dll-map-hollow --stealth mirror-headers
+	
+Create a 64-bit PE implant within the mapped image memory of a modified TxF section of a 64-bit DLL (phantom DLL hollowing) and
+execute its IMAGE_OPTIONAL_HEADER.AddressOfEntryPoint with a JMP hook from the IMAGE_OPTIONAL_HEADER.AddressOfEntryPoint of the
+artifact parent process:
+
+	ArtifactsKit64.exe --payload-type pe --payload-file Payloads\TestExe64.exe --alloc-type txf-dll-map-hollow --exec-method ep-jmp-hook
 	

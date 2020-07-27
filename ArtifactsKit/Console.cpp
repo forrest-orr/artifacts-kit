@@ -334,7 +334,7 @@ int32_t wmain(int32_t nArgc, const wchar_t* pArgv[]) {
 						pImplantAddress = (pAllocatedRegion + dwMoatSize); // Moat should only be allowed to be non-zero for image map and image load DLL hollowing with a PE payload.
 					}
 					else {
-						printf("... failed to allocate payload region via hollowed image mapping implant (finished scanning System32)\r\n");
+						printf("... failed to allocate payload region via hollowed image mapping implant (finished scanning Windows folder)\r\n");
 					}
 				}
 				else {

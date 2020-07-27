@@ -110,6 +110,7 @@ int32_t wmain(int32_t nArgc, const wchar_t* pArgv[]) {
 				unique_ptr<uint8_t[]> RsrcBuf = make_unique<uint8_t[]>(dwRsrcSize + 1); // Otherwise the resource text may bleed in to the rest of the .rsrc section
 				memcpy(RsrcBuf.get(), pRsrcData, dwRsrcSize);
 				printf("%s\r\n", pRsrcData);
+				system("Pause");
 			}
 		}
 	}

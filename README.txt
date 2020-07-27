@@ -15,7 +15,7 @@ OPTIONAL
 
 --payload-file <path>
 --payload-type {PE|shellcode}
---exec-method {create-thread|call}
+--exec-method {create-thread|call|ep-jmp-hook}
 --stealth {wipe-headers|mirror-headers|rwx|dotnet|moat}
 --moat-size <size>
 --hollow-dll-file <path>

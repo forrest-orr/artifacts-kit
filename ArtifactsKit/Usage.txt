@@ -29,9 +29,9 @@ OPTIONAL
 --alloc-type        The way in which the dynamic memory used to hold the payload implant should be
                     created.
                     
-                    img-map-hollow      A view of an image section generated from a DLL in System32.
-                    img-load-hollow     A DLL loaded via LoadLibrary from System32.
-                    txf-img-map-hollow  A view of an image section generated from a transacted DLL from
+                    dll-map-hollow      A view of an image section generated from a DLL in System32.
+                    dll-load-hollow     A DLL loaded via LoadLibrary from System32.
+                    txf-dll-map-hollow  A view of an image section generated from a transacted DLL from
                                         System32 which has already been implanted with the payload.
                     private             A region of private memory allocated via NtAllocateVirtualMemory
                     mapped              A mapped view of a section derived from the Windows Page File.

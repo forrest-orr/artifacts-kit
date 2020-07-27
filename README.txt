@@ -15,8 +15,8 @@ OPTIONAL
 
 --payload-file <path>
 --payload-type {PE|shellcode}
---exec-method {create-thread|call|ep-jmp-hook}
---stealth {wipe-headers|mirror-headers|rwx|dotnet|moat}
+--exec-method {create-thread|call}
+--stealth {wipe-headers|mirror-headers|rw-rx|dotnet|moat}
 --moat-size <size>
 --hollow-dll-file <path>
 
@@ -49,7 +49,8 @@ OPTIONAL
                     mirror-headers      Preserves the original PE headers of a hollowed DLL after it is
                                         implanted with a payload PE file. Only valid for a PE payload
                                         using an image region type.
-                    rwx                 Directly allocate the implant region with +RWX permissions. Only
+                    rw-rx               Rather than directly allocate the implant region with +RWX
+                                        permissions, allocate it as +RW and set it to +RX afterward. Only
                                         valid for private and mapped region types.
                     dotnet              Only select DLLs with a .NET header during hollowing operations.
                                         Only valid for image region types.

@@ -129,14 +129,14 @@ int32_t wmain(int32_t nArgc, const wchar_t* pArgv[]) {
 			transform(Arg.begin(), Arg.end(), Arg.begin(), ::tolower);
 
 			if (Arg == L"--alloc-type") {
-				if (*(ItrArg + 1) ==  L"img-map-hollow") {
+				if (*(ItrArg + 1) ==  L"dll-map-hollow") {
 					SelectedAllocType = Allocation_t::DllMapHollow;
 					qwImplantFlags |= IMPLANT_FLAG_ISOLATED_MAP;
 				}
-				else if (*(ItrArg + 1) ==  L"img-load-hollow") {
+				else if (*(ItrArg + 1) ==  L"dll-load-hollow") {
 					SelectedAllocType = Allocation_t::DllLoadHollow;
 				}
-				else if (*(ItrArg + 1) ==  L"txf-img-map-hollow") {
+				else if (*(ItrArg + 1) ==  L"txf-dll-map-hollow") {
 					SelectedAllocType = Allocation_t::DllTxfMapHollow;
 					qwImplantFlags |= IMPLANT_FLAG_TXF;
 					qwImplantFlags |= IMPLANT_FLAG_ISOLATED_MAP;

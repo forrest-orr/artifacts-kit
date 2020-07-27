@@ -15,8 +15,8 @@ OPTIONAL
 
 --payload-file <path>
 --payload-type {PE|shellcode}
---exec-method {create-thread|call}
---stealth {wipe-headers|mirror-headers|rw-rx|dotnet|moat}
+--exec-method {create-thread|call|ep-jmp-hook}
+--stealth {wipe-headers|mirror-headers|rw-rx|dotnet|moat|peb-img-base}
 --moat-size <size>
 --hollow-dll-file <path>
 

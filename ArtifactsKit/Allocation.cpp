@@ -199,7 +199,7 @@ bool HollowDllImplant(const wchar_t* DllFilePath, uint8_t** ppMapBuf, uint64_t* 
 										bMapped = true;
 									}
 									else {
-										printf("... failed to create mapping of section (error 0x%08x)", NtStatus);
+										printf("... failed to create mapping of section (error 0x%08x)\r\n", NtStatus);
 									}
 								}
 								else {
@@ -387,33 +387,40 @@ bool HollowDllImplant(const wchar_t* DllFilePath, uint8_t** ppMapBuf, uint64_t* 
 	return bHollowed;
 }
 
-bool HollowDllScan(uint8_t** ppMapBuf, uint64_t* pqwMapBufSize, const uint8_t* pPayloadBuf, uint32_t dwPayloadBufSize, uint8_t** ppEntryPoint, Payload_t SelectedPayloadType, uint64_t qwImplantFlags, uint32_t dwMoatSize) {
+bool HollowDllScan(const wchar_t* TargetPath, uint8_t** ppMapBuf, uint64_t* pqwMapBufSize, const uint8_t* pPayloadBuf, uint32_t dwPayloadBufSize, uint8_t** ppEntryPoint, Payload_t SelectedPayloadType, uint64_t qwImplantFlags, uint32_t dwMoatSize) {
+	wchar_t PreviousDirectory[MAX_PATH] = { 0 }, CurrentDirectory[MAX_PATH] = { 0 };
 	WIN32_FIND_DATAW Wfd = { 0 };
-	wchar_t SearchFilePath[MAX_PATH] = { 0 };
-	HANDLE hFind;
+	HANDLE hFindData;
 	bool bHollowed = false;
 
-	//
-	// Locate a DLL in the architecture appropriate system folder which has a sufficient image size to hollow for allocation.
-	//
+	GetCurrentDirectoryW(MAX_PATH, PreviousDirectory);
 
-	GetSystemDirectoryW(SearchFilePath, MAX_PATH);
-	wcscat_s(SearchFilePath, MAX_PATH, L"\\*.dll");
+	if (SetCurrentDirectoryW(TargetPath)) {
+		GetCurrentDirectoryW(MAX_PATH, CurrentDirectory);
 
-	if ((hFind = FindFirstFileW(SearchFilePath, &Wfd)) != INVALID_HANDLE_VALUE) {
-		do {
-			if (GetModuleHandleW(Wfd.cFileName) == nullptr) {
-				wchar_t FilePath[MAX_PATH];
+		if ((hFindData = FindFirstFileW(L"*", &Wfd)) != INVALID_HANDLE_VALUE) {
+			do {
+				if (_wcsicmp(Wfd.cFileName, L".") != 0 && _wcsicmp(Wfd.cFileName, L"..") != 0) {
+					if ((Wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+						bHollowed = HollowDllScan(Wfd.cFileName, ppMapBuf, pqwMapBufSize, pPayloadBuf, dwPayloadBufSize, ppEntryPoint, SelectedPayloadType, qwImplantFlags, dwMoatSize);
+					}
+					else if (wcsstr(Wfd.cFileName, L".dll") != nullptr && GetModuleHandleW(Wfd.cFileName) == nullptr) {
+						wchar_t FilePath[MAX_PATH];
 
-				GetSystemDirectoryW(FilePath, MAX_PATH);
-				wcscat_s(FilePath, MAX_PATH, L"\\");
-				wcscat_s(FilePath, MAX_PATH, Wfd.cFileName);
-				bHollowed = HollowDllImplant(FilePath, ppMapBuf, pqwMapBufSize, pPayloadBuf, dwPayloadBufSize, ppEntryPoint, SelectedPayloadType, qwImplantFlags, dwMoatSize);
-			}
-		} while (!bHollowed && FindNextFileW(hFind, &Wfd));
+						wcscpy_s(FilePath, MAX_PATH, CurrentDirectory);
+						wcscat_s(FilePath, MAX_PATH, L"\\");
+						wcscat_s(FilePath, MAX_PATH, Wfd.cFileName);
+						printf("DLL: %ws\r\n", FilePath);
+						bHollowed = HollowDllImplant(FilePath, ppMapBuf, pqwMapBufSize, pPayloadBuf, dwPayloadBufSize, ppEntryPoint, SelectedPayloadType, qwImplantFlags, dwMoatSize);
+					}
+				}
+			} while (!bHollowed && FindNextFileW(hFindData, &Wfd));
+		} 
 
-		FindClose(hFind);
+		FindClose(hFindData);
 	}
+
+	SetCurrentDirectoryW(PreviousDirectory);
 
 	return bHollowed;
 }

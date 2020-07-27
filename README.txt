@@ -67,3 +67,11 @@ OPTIONAL
 					
 EXAMPLES
 
+Create a 32-bit shellcode implant within the .text section of a mapped 32-bit DLL image and execute it using the CALL instruction:
+
+	ArtifactsKit32.exe --payload-type shellcode --payload-file Payloads\MsgboxShellcode32.bin --alloc-type dll-map-hollow
+	
+Create a 64-bit shellcode implant within a region of +RWX mapped page file memory at an offset +1MB from its allocation base and execute it using the KERNEL32.DLL!CreateThread API:
+
+	ArtifactsKit64.exe --payload-type shellcode --payload-file Payloads\MsgboxShellcode64.bin --alloc-type mapped --stealth moat
+	

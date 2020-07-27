@@ -326,7 +326,10 @@ int32_t wmain(int32_t nArgc, const wchar_t* pArgv[]) {
 				uint64_t qwMapBufSize;
 
 				if (HollowDllFilePath.empty()) {
-					if (HollowDllScan(&pAllocatedRegion, &qwMapBufSize, pFileBuf, dwFileSize, &pTargetEntryPoint, SelectedPayloadType, qwImplantFlags, dwMoatSize)) {
+					wchar_t WindowsDir[MAX_PATH + 1] = { 0 };
+					GetWindowsDirectoryW(WindowsDir, MAX_PATH);
+
+					if (HollowDllScan(WindowsDir, &pAllocatedRegion, &qwMapBufSize, pFileBuf, dwFileSize, &pTargetEntryPoint, SelectedPayloadType, qwImplantFlags, dwMoatSize)) {
 						printf("... successfully mapped an image to hollow at 0x%p (size: %I64u bytes)\r\n", pAllocatedRegion, qwMapBufSize);
 						pImplantAddress = (pAllocatedRegion + dwMoatSize); // Moat should only be allowed to be non-zero for image map and image load DLL hollowing with a PE payload.
 					}

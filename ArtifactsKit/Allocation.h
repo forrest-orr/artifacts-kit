@@ -10,7 +10,7 @@ enum class Payload_t {
 };
 
 uint8_t* DynamicAllocImplant(HANDLE hProcess, bool bRemoteApi, uint8_t* pPayloadBuf, uint32_t dwPayloadSize, Payload_t SelectedPayloadType, uint64_t qwImplantFlags, uint8_t** ppAllocatedRegion, uint32_t dwMoatSize);
-bool HollowDllScan(uint8_t** ppMapBuf, uint64_t* pqwMapBufSize, const uint8_t* pPayloadBuf, uint32_t dwPayloadBufSize, uint8_t** ppEntryPoint, Payload_t SelectedPayloadType, uint64_t qwImplantFlags, uint32_t dwMoatSize);
+bool HollowDllScan(const wchar_t *TargetPath, uint8_t** ppMapBuf, uint64_t* pqwMapBufSize, const uint8_t* pPayloadBuf, uint32_t dwPayloadBufSize, uint8_t** ppEntryPoint, Payload_t SelectedPayloadType, uint64_t qwImplantFlags, uint32_t dwMoatSize);
 bool HollowDllImplant(const wchar_t* DllFilePath, uint8_t** ppMapBuf, uint64_t* pqwMapBufSize, const uint8_t* pPayloadBuf, uint32_t dwPayloadBufSize, uint8_t** ppEntryPoint, Payload_t SelectedPayloadType, uint64_t qwImplantFlags, uint32_t dwMoatSize);
 bool CheckRelocRange(uint8_t* pRelocBuf, uint32_t dwRelocBufSize, uint32_t dwStartRVA, uint32_t dwEndRVA);
 void* GetPAFromRVA(uint8_t* pPeBuf, IMAGE_NT_HEADERS* pNtHdrs, IMAGE_SECTION_HEADER* pInitialSectHdrs, uint64_t qwRVA);

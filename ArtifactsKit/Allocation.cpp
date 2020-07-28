@@ -522,17 +522,24 @@ uint8_t* DynamicAllocImplant(HANDLE hProcess, bool bRemoteApi, uint8_t* pPayload
 	if (pAllocatedRegion != nullptr) {
 		printf("... allocated memory at 0x%p\r\n", pAllocatedRegion);
 
-		if (SelectedPayloadType == Payload_t::Shellcode) {
+		if (SelectedPayloadType == Payload_t::None) {
+			if ((qwImplantFlags & IMPLANT_FLAG_RW_RX)) {
+				VirtualProtectEx(hProcess, pAllocatedRegion, dwAllocatedRegionSize, PAGE_EXECUTE_READ, (PDWORD)&dwOldProtect);
+				printf("... changed memory at 0x%p to +RX\r\n", pAllocatedRegion);
+			}
+		}
+		else if (SelectedPayloadType == Payload_t::Shellcode) {
 			if (pPayloadBuf != nullptr) {
 				uint32_t dwBytesWritten = 0;
 
 				if (WriteProcessMemory(hProcess, pAllocatedRegion + ((qwImplantFlags & IMPLANT_FLAG_MOAT) ? dwMoatSize : 0), pPayloadBuf, dwPayloadSize, (PSIZE_T)&dwBytesWritten)) {
 					pImplantEntryPoint = pAllocatedRegion + ((qwImplantFlags & IMPLANT_FLAG_MOAT) ? dwMoatSize : 0);
-				}
-			}
 
-			if ((qwImplantFlags & IMPLANT_FLAG_RW_RX)) {
-				VirtualProtectEx(hProcess, pAllocatedRegion, dwAllocatedRegionSize, PAGE_EXECUTE_READ, (PDWORD)&dwOldProtect);
+					if ((qwImplantFlags & IMPLANT_FLAG_RW_RX)) {
+						VirtualProtectEx(hProcess, pAllocatedRegion, dwAllocatedRegionSize, PAGE_EXECUTE_READ, (PDWORD)&dwOldProtect);
+						printf("... changed memory at 0x%p to +RX\r\n", pAllocatedRegion);
+					}
+				}
 			}
 		}
 		else if (SelectedPayloadType == Payload_t::PE) {

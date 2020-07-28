@@ -77,9 +77,8 @@ from its allocation base and execute it using the KERNEL32.DLL!CreateThread API:
 
 	ArtifactsKit64.exe --payload-type shellcode --payload-file Payloads\MsgboxShellcode64.bin --alloc-type mapped --stealth moat
 	
-Create a 32-bit PE implant on top of the mapped image memory of a 32-bit DLL image while preserving the
-original headers of this DLL image, bootstrap it and execute the payload PE
-IMAGE_OPTIONAL_HEADER.AddressOfEntryPoint with a CALL.
+Create a 32-bit PE implant on top of the mapped image memory of a 32-bit DLL image while preserving its
+original headers, bootstrap and execute the payload PE IMAGE_OPTIONAL_HEADER.AddressOfEntryPoint with a CALL.
 
 	ArtifactsKit32.exe --payload-type pe --payload-file Payloads\TestExe32.exe --alloc-type dll-map-hollow --stealth mirror-headers
 	

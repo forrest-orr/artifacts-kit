@@ -379,15 +379,15 @@ bool HollowDllImplant(const wchar_t* DllFilePath, uint8_t** ppMapBuf, uint64_t* 
 						} // else not a .NET DLL although required
 					}
 					else {
-						printf("... module size of %d is too small to accomodate payload of size %d or code section size of %d too small\r\n", pNtHdrs->OptionalHeader.SizeOfImage, dwRequiredSize, nCodeIndex == -1 ? -1 : (pSectHdrs + nCodeIndex)->Misc.VirtualSize);
+						//printf("... module size of %d is too small to accomodate payload of size %d or code section size of %d too small\r\n", pNtHdrs->OptionalHeader.SizeOfImage, dwRequiredSize, nCodeIndex == -1 ? -1 : (pSectHdrs + nCodeIndex)->Misc.VirtualSize);
 					}
 				}
 				else {
-					printf("... invalid NT header magic\r\n");
+					//printf("... invalid NT header magic\r\n");
 				}
 			}
 			else {
-				printf("... invalid MZ header\r\n");
+				//printf("... invalid MZ header\r\n");
 			}
 		}
 
@@ -437,7 +437,7 @@ bool HollowDllScan(const wchar_t* TargetPath, uint8_t** ppMapBuf, uint64_t* pqwM
 						wcscpy_s(FilePath, MAX_PATH, CurrentDirectory);
 						wcscat_s(FilePath, MAX_PATH, L"\\");
 						wcscat_s(FilePath, MAX_PATH, Wfd.cFileName);
-						printf("DLL: %ws\r\n", FilePath);
+						//printf("DLL: %ws\r\n", FilePath);
 						bHollowed = HollowDllImplant(FilePath, ppMapBuf, pqwMapBufSize, pPayloadBuf, dwPayloadBufSize, ppEntryPoint, SelectedPayloadType, qwImplantFlags, dwMoatSize);
 					}
 				}

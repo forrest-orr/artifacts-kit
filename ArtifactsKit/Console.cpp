@@ -334,7 +334,8 @@ int32_t wmain(int32_t nArgc, const wchar_t* pArgv[]) {
 					wchar_t SearchDir[MAX_PATH + 1] = { 0 };
 
 					if ((qwImplantFlags & IMPLANT_FLAG_DOTNET)) {
-						GetWindowsDirectoryW(SearchDir, MAX_PATH);
+						//GetWindowsDirectoryW(SearchDir, MAX_PATH);
+						GetSystemDirectoryW(SearchDir, MAX_PATH);
 					}
 					else {
 						GetSystemDirectoryW(SearchDir, MAX_PATH);

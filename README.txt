@@ -63,7 +63,7 @@ OPTIONAL
                     the moat stealth option is specified. Default size of 1MB.
 --hollow-dll-file   Manually specify the path of a DLL to use in conjunction with hollowing allocation
                     type. When this is not specified, a suitable DLL will randomly be selected from
-                    System32.
+                    the Windows directory or one of its subfolders.
 					
 EXAMPLES
 

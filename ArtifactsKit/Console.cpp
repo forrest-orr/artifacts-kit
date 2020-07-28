@@ -439,6 +439,6 @@ int32_t wmain(int32_t nArgc, const wchar_t* pArgv[]) {
 		if(hFile != INVALID_HANDLE_VALUE) CloseHandle(hFile);
 	}
 
-	//system("pause");
+	system("pause");
 	return 0;
 }

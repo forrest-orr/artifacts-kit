@@ -1,0 +1,11 @@
+For LoadLibrary PE hollow, moating = REALIGNED and header wiping = VIRTUAL. Moating + header wiping = VIRTUAL
+
+For PRV PE bootstrap, moating = VIRTUAL, header wiping = UNMAPPED, moating + header wipe = VIRTUAL
+
+For PRV, +RX vs +RWX makes no difference for blank, shellcode or PE.
+For MAP, +RX vs +RWX makes no difference for blank, shellcode or PE.
+
+The most interesting takeaways are:
+1. Only phantom DLLs are detected blank
+2. All variations of PE bootstrap are detected except hollowing in a .NET module in the PEB
+3. Even with header wiping and moating, PEs in PRV/MAP memory are detected, but shellcode never is even when non-moated.

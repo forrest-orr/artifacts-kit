@@ -1,0 +1,19 @@
+{
+ "pid" : 8060,
+ "output_dir" : "process_8060",
+ "dumped" : 
+ {
+  "total" : 1,
+  "dumped" : 1
+ },
+ "dumps" : [
+  {
+   "module" : "591000",
+   "module_size" : "c000",
+   "dump_file" : "591000.shc",
+   "dump_mode" : "VIRTUAL",
+   "is_shellcode" : 1,
+   "status" : 1
+  }
+ ]
+}

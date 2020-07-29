@@ -1,0 +1,55 @@
+{
+ "pid" : 7888,
+ "is_64_bit" : 0,
+ "is_managed" : 0,
+ "main_image_path" : "C:\\Users\\Forrest\\Documents\\GitHub\\ArtifactsKit\\ArtifactsKit\\Release\\ArtifactsKit32.exe",
+ "scanned" : 
+ {
+  "total" : 44,
+  "skipped" : 0,
+  "modified" : 
+  {
+   "total" : 3,
+   "patched" : 0,
+   "iat_hooked" : 2,
+   "replaced" : 1,
+   "hdr_modified" : 0,
+   "implanted_pe" : 0,
+   "implanted_shc" : 0,
+   "unreachable_file" : 0,
+   "other" : 0
+  },
+  "errors" : 0
+ },
+ "scans" : [
+  {
+   "headers_scan" : {
+    "module" : "53da0000",
+    "module_file" : "C:\\Windows\\SysWoW64\\aadauthhelper.dll",
+    "status" : 1,
+    "is_pe_replaced" : 1,
+    "dos_hdr_modified" : 1,
+    "file_hdr_modified" : 1,
+    "nt_hdr_modified" : 1,
+    "ep_modified" : 1,
+    "sec_hdr_modified" : 1
+   }
+  },
+  {
+   "iat_scan" : {
+    "module" : "75af0000",
+    "module_file" : "C:\\Windows\\System32\\advapi32.dll",
+    "status" : 1,
+    "hooks" : 2
+   }
+  },
+  {
+   "iat_scan" : {
+    "module" : "75a80000",
+    "module_file" : "C:\\Windows\\System32\\imm32.dll",
+    "status" : 1,
+    "hooks" : 1
+   }
+  }
+ ]
+}

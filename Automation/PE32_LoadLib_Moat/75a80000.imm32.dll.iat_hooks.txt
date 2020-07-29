@@ -1,0 +1,1 @@
+1b048;kernel32.GetProcessMitigationPolicy #696->kernelbase.GetProcessMitigationPolicy #692;77360000+110910;0

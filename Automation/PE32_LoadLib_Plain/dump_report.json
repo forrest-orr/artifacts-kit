@@ -1,0 +1,19 @@
+{
+ "pid" : 11268,
+ "output_dir" : "process_11268",
+ "dumped" : 
+ {
+  "total" : 1,
+  "dumped" : 1
+ },
+ "dumps" : [
+  {
+   "module" : "53da0000",
+   "module_size" : "17000",
+   "dump_file" : "53da0000.aadauthhelper.dll",
+   "dump_mode" : "UNMAPPED",
+   "is_shellcode" : 0,
+   "status" : 1
+  }
+ ]
+}

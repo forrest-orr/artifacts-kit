@@ -1,0 +1,27 @@
+{
+ "pid" : 8744,
+ "output_dir" : "process_8744",
+ "dumped" : 
+ {
+  "total" : 2,
+  "dumped" : 2
+ },
+ "dumps" : [
+  {
+   "module" : "b34240",
+   "module_size" : "17dc0",
+   "dump_file" : "b34240.exe",
+   "dump_mode" : "UNMAPPED",
+   "is_shellcode" : 0,
+   "status" : 1
+  },
+  {
+   "module" : "b34000",
+   "module_size" : "18000",
+   "dump_file" : "b34000.shc",
+   "dump_mode" : "VIRTUAL",
+   "is_shellcode" : 1,
+   "status" : 1
+  }
+ ]
+}

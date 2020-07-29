@@ -1,0 +1,20 @@
+{
+ "pid" : 5776,
+ "output_dir" : "process_5776",
+ "dumped" : 
+ {
+  "total" : 1,
+  "dumped" : 1
+ },
+ "dumps" : [
+  {
+   "module" : "53da0000",
+   "module_size" : "24000",
+   "dump_file" : "53da0000.aadauthhelper.dll",
+   "tags_file" : "53da0000.aadauthhelper.dll.tag",
+   "dump_mode" : "UNMAPPED",
+   "is_shellcode" : 0,
+   "status" : 1
+  }
+ ]
+}

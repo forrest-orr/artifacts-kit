@@ -1,0 +1,20 @@
+{
+ "pid" : 11716,
+ "output_dir" : "process_11716",
+ "dumped" : 
+ {
+  "total" : 1,
+  "dumped" : 1
+ },
+ "dumps" : [
+  {
+   "module" : "7fff92cb0000",
+   "module_size" : "37000",
+   "dump_file" : "7fff92cb0000.aadauthhelper.dll",
+   "tags_file" : "7fff92cb0000.aadauthhelper.dll.tag",
+   "dump_mode" : "UNMAPPED",
+   "is_shellcode" : 0,
+   "status" : 1
+  }
+ ]
+}

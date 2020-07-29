@@ -1,0 +1,46 @@
+{
+ "pid" : 8652,
+ "is_64_bit" : 0,
+ "is_managed" : 0,
+ "main_image_path" : "C:\\Users\\Forrest\\Documents\\GitHub\\ArtifactsKit\\ArtifactsKit\\Release\\ArtifactsKit32.exe",
+ "scanned" : 
+ {
+  "total" : 34,
+  "skipped" : 0,
+  "modified" : 
+  {
+   "total" : 1,
+   "patched" : 0,
+   "iat_hooked" : 0,
+   "replaced" : 0,
+   "hdr_modified" : 0,
+   "implanted_pe" : 1,
+   "implanted_shc" : 0,
+   "unreachable_file" : 0,
+   "other" : 0
+  },
+  "errors" : 0
+ },
+ "scans" : [
+  {
+   "workingset_scan" : {
+    "module" : "3e0000",
+    "status" : 1,
+    "has_pe" : 1,
+    "has_shellcode" : 0,
+    "is_listed_module" : 0,
+    "protection" : "2",
+    "mapping_type" : "MEM_MAPPED",
+    "mapped_name" : "",
+    "pe_artefacts" : {
+     "pe_base_offset" : "0",
+     "nt_file_hdr" : "fc",
+     "sections_hdrs" : "1f0",
+     "sections_count" : 5,
+     "is_dll" : 0,
+     "is_64_bit" : 0
+    }
+   }
+  }
+ ]
+}

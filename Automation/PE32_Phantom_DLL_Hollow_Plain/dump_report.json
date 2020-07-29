@@ -1,0 +1,19 @@
+{
+ "pid" : 10756,
+ "output_dir" : "process_10756",
+ "dumped" : 
+ {
+  "total" : 1,
+  "dumped" : 1
+ },
+ "dumps" : [
+  {
+   "module" : "cc0000",
+   "module_size" : "17000",
+   "dump_file" : "cc0000.exe",
+   "dump_mode" : "UNMAPPED",
+   "is_shellcode" : 0,
+   "status" : 1
+  }
+ ]
+}

@@ -1,0 +1,19 @@
+{
+ "pid" : 11856,
+ "output_dir" : "process_11856",
+ "dumped" : 
+ {
+  "total" : 1,
+  "dumped" : 1
+ },
+ "dumps" : [
+  {
+   "module" : "de0000",
+   "module_size" : "17000",
+   "dump_file" : "de0000.exe",
+   "dump_mode" : "UNMAPPED",
+   "is_shellcode" : 0,
+   "status" : 1
+  }
+ ]
+}

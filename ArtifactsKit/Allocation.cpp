@@ -562,6 +562,9 @@ uint8_t* DynamicAllocImplant(HANDLE hProcess, bool bRemoteApi, uint8_t* pPayload
 						VirtualProtect(pNewPeImageBase, dwNewPeImgSize, PAGE_EXECUTE_READWRITE, (PDWORD)&dwOldProtect);
 						printf("... forced +RWX permissions on %d bytes of allocated payload memory.\r\n", dwNewPeImgSize);
 					}
+					else if((qwImplantFlags & IMPLANT_FLAG_MOAT)) { // Unique case for page file mappings, which always have an initial allocation of +RWX. Without this check, the moat will remain +RWX when it should be +RX (and the PE will have correct permissions as usual)
+						VirtualProtect(pAllocatedRegion, dwMoatSize, PAGE_EXECUTE_READ, (PDWORD)&dwOldProtect);
+					}
 
 					pImplantEntryPoint = pNewPeEntryPoint;
 				}

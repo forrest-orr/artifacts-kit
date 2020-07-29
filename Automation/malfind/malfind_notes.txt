@@ -1,0 +1,17 @@
+malfind does not catch any test cases besides mapped shellcode.
+It was confirmed correct permissions and tests. Moneta verified the memory is +RX, not +RWX. Fascinatingly, it seems that because mapped was initially +RWX it triggers detection
+for shellcode but NOT PE (confirmed this).
+
+It only seems to catch mapped and private +RWX memory regions, and does not catch them blank.
+
+Private
+
+blank? 
+with PE?
+with shellcode?
+with moated PE?
+with moated shellcode?
+with header wiped PE?
+
+Mapped
+

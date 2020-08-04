@@ -1,2 +1,0 @@
-6c0b0;kernel32.InitOnceBeginInitialize #853->kernelbase.InitOnceBeginInitialize #862;77360000+efee0;0
-6c0bc;kernel32.InitOnceComplete #854->kernelbase.InitOnceComplete #863;77360000+114060;0
